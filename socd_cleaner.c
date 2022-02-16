@@ -2,6 +2,7 @@
 #include <stdio.h>
 #include <ctype.h>
 #include <shlwapi.h>
+#include <stdbool.h>
 #pragma comment(lib,"user32.lib")
 #pragma comment(lib,"shlwapi.lib")
 
@@ -332,7 +333,7 @@ int main() {
     HWND hwndMain = CreateWindowExW(
         0,
         CLASS_NAME,
-        L"SOCD helper for Epic Gamers!",
+        L"SOCD helper for 3pic G4m3rz!",
         WS_OVERLAPPEDWINDOW | WS_VISIBLE,
         CW_USEDEFAULT,
         CW_USEDEFAULT,
@@ -346,18 +347,20 @@ int main() {
         return error_message("Failed to create a window, error code is %d");
     }
     
+    #pragma region Button Hwnds
+
     HWND wasd_hwnd = CreateWindowExW(
-        0,
-        L"BUTTON",
-        L"WASD",
-        WS_TABSTOP | WS_VISIBLE | WS_CHILD | BS_AUTORADIOBUTTON,
-        10,
-        90,
-        100,
-        30,
-        hwndMain,
-        (HMENU)WASD_ID,
-        hInstance,
+        0, //dwExStyle
+        L"BUTTON", //lpClassName
+        L"WASD", //lpWindowName
+        WS_TABSTOP | WS_VISIBLE | WS_CHILD | BS_AUTORADIOBUTTON, //dwStyle(s)
+        10, //x
+        90, //y
+        100, //nWidth
+        30, //nHeight
+        hwndMain, //hWndParent
+        (HMENU)WASD_ID, //hMenu
+        hInstance, //hInstance
         NULL);
     if (wasd_hwnd == NULL) {
         return error_message("Failed to create WASD radiobutton, error code is %d");
@@ -396,18 +399,28 @@ int main() {
     if (custom_hwnd == NULL) {
         return error_message("Failed to create Custom radiobutton, error code is %d");
     }
+
+    #pragma endregion
     
     int check_id;
+    char newText[12];
     if (memcmp(CUSTOM_BINDS, WASD, sizeof(WASD)) == 0) {
         check_id = WASD_ID;
+        strcpy(newText,"WASD");
     } else if (memcmp(CUSTOM_BINDS, ARROWS, sizeof(ARROWS)) == 0) {
         check_id = ARROWS_ID;
+        strcpy(newText, "Arrows");
     } else {
         check_id = CUSTOM_ID;
+        strcpy(newText, "Custom Keys");
     }
     if (CheckRadioButton(hwndMain, WASD_ID, CUSTOM_ID, check_id) == 0) {
         return error_message("Failed to select default keybindings, error code is %d");
     }
+    
+    char title[39] = "SOCD helper for 3p1c G4m3rz! Tracking ";
+    strncat(title, newText, 12);
+    if (SetWindowTextA(hwndMain, title) == false) { return error_message("Couldn't set window title, error code is %d"); }
     
     HWND text_hwnd = CreateWindowExW(
         0,
@@ -428,7 +441,7 @@ int main() {
     if (text_hwnd == NULL) {
         return error_message("Failed to create Text, error code is %d");
     }
-    
+        
     MSG msg;
     while (GetMessageW(&msg, NULL, 0, 0)) {
         TranslateMessage(&msg);
