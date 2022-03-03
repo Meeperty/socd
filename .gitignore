@@ -1,5 +1,5 @@
 *.exe
-*.obj
 socd.conf
 .vscode/
 .vs/
+/obj
