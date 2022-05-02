@@ -8,6 +8,8 @@
     <Folder Include="Models\" />
     <AvaloniaResource Include="Assets\**" />
     <None Remove=".gitignore" />
+    <None Remove="LICENSE_APACHE" />
+    <None Remove="LICENSE_MIT" />
   </ItemGroup>
   <ItemGroup>
     <PackageReference Include="Avalonia" Version="0.10.10" />
