@@ -12,6 +12,17 @@
         <vm:MainWindowViewModel/>
     </Design.DataContext>
 
-    <TextBlock Text="{Binding Greeting}" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+	<Panel Background="Black">
+		<ListBox Items="{Binding KeyOptions}"
+				 SelectedItem="{Binding SelectedKeys}"
+				 Classes="RadioButtonListBox"
+				 Background="Black"
+				 HorizontalAlignment="Center"
+				 VerticalAlignment="Center">
+		</ListBox>
+		<Button HorizontalAlignment="Center"
+				VerticalAlignment="Top"
+				>Create Message Box</Button>
+	</Panel>
 
 </Window>

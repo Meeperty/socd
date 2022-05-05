@@ -7,6 +7,29 @@
     </Application.DataTemplates>
 
     <Application.Styles>
-        <FluentTheme Mode="Light"/>
+        <FluentTheme Mode="Dark"/>
     </Application.Styles>
+
+	<Application.Styles>
+		
+		<!--from https://github.com/AvaloniaUI/Avalonia/issues/3016-->
+		<Style Selector="ListBox.RadioButtonListBox">
+			<Setter Property="BorderBrush" Value="Transparent"/>
+		</Style>
+		<Style Selector="ListBox.RadioButtonListBox ListBoxItem">
+			<Setter Property="Template">
+				<Setter.Value>
+					<ControlTemplate>
+						<Border Background="Transparent">
+							<RadioButton Content="{TemplateBinding ContentPresenter.Content}"
+										 VerticalAlignment="Center"
+										 IsChecked="{Binding Path=IsSelected,RelativeSource={RelativeSource TemplatedParent},Mode=TwoWay}"/>
+						</Border>
+					</ControlTemplate>
+				</Setter.Value>
+			</Setter>
+		</Style>
+		
+	</Application.Styles>
+	
 </Application>
