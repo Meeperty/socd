@@ -5,11 +5,8 @@ using System.ComponentModel;
 using System.Runtime.InteropServices;
 using Avalonia.Controls;
 using Avalonia;
-using Avalonia.VisualTree;
-using Avalonia.Platform;
 using SOCD_Sharp;
 using System.IO;
-using Microsoft.Win32.SafeHandles;
 
 namespace SOCD_Sharp.ViewModels
 {
@@ -19,16 +16,18 @@ namespace SOCD_Sharp.ViewModels
         public event PropertyChangedEventHandler? PropertyChanged;
 #pragma warning restore CS0108 // Member hides inherited member; missing new keyword
 
+        public event EventHandler<string> ErrorBox;
+
         const string internalSettingsPath = @"socdSettings.conf";
         string settingsPath;
         const int maxProcessListLength = 200;
-        List<string> processList;
+        public List<string> processList;
 
         public KeyboardHookWindows kbhook = new();
 
         public void Init()
         {
-            StreamReader reader = new StreamReader(internalSettingsPath);
+            StreamReader reader = new(internalSettingsPath);
             if (reader.Peek() != -1)
             {
                 settingsPath = reader.ReadLine();
@@ -36,6 +35,10 @@ namespace SOCD_Sharp.ViewModels
             if (settingsPath != null)
             {
                 ReadSettings();
+            }
+            else
+            {
+                ErrorBox(this, "No settings path in socdSettings.conf");
             }
             reader.Close();
 
@@ -51,7 +54,7 @@ namespace SOCD_Sharp.ViewModels
             set
             {
                 keyOptions = value;
-                PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(KeyOptions)));
+                PropertyChanged?.Invoke(this, new(nameof(KeyOptions)));
             }
         }
 
@@ -69,24 +72,30 @@ namespace SOCD_Sharp.ViewModels
 
         public void ReadSettings()
         {
-            KeySet keys = new(1,1,1,1);
+            KeySet keys = new();
             List<string> processes = new();
-            StreamReader reader = new StreamReader(settingsPath);
+            StreamReader reader = new(settingsPath);
             int l = new();
             int r = new();
             int u = new();
             int d = new();
             try
             {
+#pragma warning disable CS8604 // Possible null reference argument.
                 l = int.Parse(reader.ReadLine());
                 r = int.Parse(reader.ReadLine());
                 u = int.Parse(reader.ReadLine());
                 d = int.Parse(reader.ReadLine());
                 keys = new(l, r, u, d);
+                if (KeySet.SameKeys(keys, new(0, 0, 0, 0)))
+                {
+                    ErrorBox(this, "Not enough keys in settings file");
+                }
 
                 for (int i = 0; i < maxProcessListLength; i++)
                 {
                     if (reader.Peek() != -1) { processes.Add(reader.ReadLine()); }
+                    else { break; }
                 }
                 foreach (var item in processes)
                 {
@@ -95,6 +104,7 @@ namespace SOCD_Sharp.ViewModels
                         processList.Add(item);
                     }
                 }
+#pragma warning restore CS8604 // Possible null reference argument.
             }
             catch (NullReferenceException) { }
 
@@ -104,11 +114,11 @@ namespace SOCD_Sharp.ViewModels
                 keyTypes.TryGetValue("WASD", out wasd);
                 KeySet arrows;
                 keyTypes.TryGetValue("Arrows", out arrows);
-                if (keys == wasd)
+                if (KeySet.SameKeys(wasd, keys))
                 {
                     SelectedKeys = "WASD";
                 }
-                else if (keys == arrows)
+                else if (KeySet.SameKeys(arrows, keys))
                 {
                     SelectedKeys = "Arrows";
                 }
@@ -136,6 +146,7 @@ namespace SOCD_Sharp.ViewModels
             int key = args.VirtKeyCode;
             kbd.wVk = key;
             int opposing = FindOpposingKey(key);
+            // if the keycode isn't in the KeySet, opposing returns -1
             if (opposing == -1) { return; }
 
             int index = FindIndexByKey(key);
@@ -183,7 +194,7 @@ namespace SOCD_Sharp.ViewModels
 
         public int FindOpposingKey(int key)
         {
-            KeySet keys = CurrentKeys;
+            KeySet keys = currKeys();
             if (key == keys.left)
                 return keys.right;
             if (key == keys.right)
@@ -220,13 +231,13 @@ namespace SOCD_Sharp.ViewModels
             }
 
             if (set != null) { return set; }
-            else { return new KeySet(); }
+            else { return new(); }
         }
 
         public Dictionary<string, KeySet> keyTypes = new Dictionary<string, KeySet> 
         {
-            { "WASD", new KeySet(41,44,57,53) },
-            { "Arrows", new KeySet(25,27,26,28) },
+            { "WASD", new KeySet(65,68,87,83) },
+            { "Arrows", new KeySet(37,39,38,40) },
         };
 
         public class KeySet
@@ -249,6 +260,22 @@ namespace SOCD_Sharp.ViewModels
                 right = 0;
                 up = 0;
                 down = 0;
+            }
+
+            public static bool SameKeys(KeySet first, KeySet second)
+            {
+                bool same = true;
+                if (first.left != second.left) { same = false; }
+                if (first.right != second.right) { same = false; }
+                if (first.up != second.up) { same = false; }
+                if (first.down != second.down) { same = false; }
+                return same;
+            }
+
+            public bool ContainsKey(int k)
+            {
+                if (left == k || right == k || up == k || down == k) { return true; }
+                return false;
             }
         }
     }

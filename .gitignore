@@ -2,4 +2,5 @@
 socd.conf
 .vscode/
 .vs/
-/obj
+obj/
+/bin/

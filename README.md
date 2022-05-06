@@ -21,7 +21,7 @@ There you go, I warned you. Enjoy!
 ## (Beta) Custom keybindings
 
 You can specify your custom keybindings as you first 4 rows in `socd.conf`.
-You can get numbers for your keys [here](https://docs.microsoft.com/en-us/windows/win32/inputdev/virtual-key-codes),
+You can get numbers for your keys [here](https://boostrobotics.eu/windows-key-codes/),
 just make sure to remove `0x` and put only the number itself.
 Just clicking on "Custom" doesn't do anything for now, but it'll appear as selected automatically
 after you put anything other than WASD or arrows in your `socd.conf`

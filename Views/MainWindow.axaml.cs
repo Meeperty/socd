@@ -14,17 +14,12 @@ namespace SOCD_Sharp.Views
     {
         public MainWindow()
         {
-            //var viewModel = new MainWindowViewModel();
-            //DataContext = viewModel;
-
-            IntPtr content = Marshal.StringToHGlobalAnsi("Hi");
-            IntPtr title = Marshal.StringToHGlobalAnsi("Title");
-            this.Opened += (_, _) =>
+            Opened += (_, _) =>
             {
-                Win32Interop.MessageBox(Handle, content, title, 0);
                 DataContextCast?.Init();
+                DataContextCast.ErrorBox += MakeErrorBox;
             };
-            this.Closing += (_, _) =>
+            Closing += (_, _) =>
             {
                 DataContextCast?.kbhook.RemoveHook();
             };
@@ -32,6 +27,13 @@ namespace SOCD_Sharp.Views
 #if DEBUG
             this.AttachDevTools();
 #endif
+        }
+
+        public void MakeErrorBox(object? sender, string content)
+        {
+            IntPtr titleANSI = Marshal.StringToHGlobalAnsi("Error");
+            IntPtr contentANSI = Marshal.StringToHGlobalAnsi(content);
+            Win32Interop.MessageBox(Handle, contentANSI, titleANSI, 0);
         }
 
         public MainWindowViewModel? DataContextCast
