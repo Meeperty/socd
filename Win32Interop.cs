@@ -36,7 +36,7 @@ namespace SOCD_Sharp
 
         [DllImport("user32.dll")]
         public static extern uint SendInput(uint cInputs, INPUT[] input, int cbSize);
-        public static uint SendInput(uint cInputs, INPUT input, int cbSize) => SendInput(cInputs, new INPUT[] { input }, cbSize);
+        //public static uint SendInput(uint cInputs, INPUT input, int cbSize) => SendInput(cInputs, new INPUT[] { input }, cbSize);
 
         [UnmanagedFunctionPointer(CallingConvention.Winapi)]
         public delegate IntPtr HookProc(int nCode, UIntPtr wParam, IntPtr lParam);

@@ -80,3 +80,4 @@ cl /O2 socd_cleaner.c
 ## LICENSE
 MIT or Apache 2.0, whatever you like
 
+https://social.msdn.microsoft.com/Forums/windowsdesktop/en-US/350ceab8-436b-4ef1-8512-3fee4b470c0a/problem-with-manifest-and-uiaccess-set-to-true?forum=windowsgeneraldevelopmentissues

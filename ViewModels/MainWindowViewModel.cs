@@ -8,6 +8,7 @@ using Avalonia;
 using SOCD_Sharp;
 using System.IO;
 
+
 namespace SOCD_Sharp.ViewModels
 {
     public class MainWindowViewModel : ViewModelBase, INotifyPropertyChanged
@@ -137,6 +138,7 @@ namespace SOCD_Sharp.ViewModels
         public void KeyHandler(object? sender, KeyboardHookWindows.NewKeyboardMessageEventArgs args)
         {
             Win32Interop.INPUT input = new();
+   
             input.type = 1;
             Win32Interop.KEYBDINPUT kbd = new();
             kbd.wScan = 0;
@@ -144,8 +146,9 @@ namespace SOCD_Sharp.ViewModels
             kbd.dwExtraInfo = (IntPtr)0;
 
             int key = args.VirtKeyCode;
-            kbd.wVk = key;
+            
             int opposing = FindOpposingKey(key);
+            kbd.wVk = opposing;
             // if the keycode isn't in the KeySet, opposing returns -1
             if (opposing == -1) { return; }
 
@@ -162,7 +165,17 @@ namespace SOCD_Sharp.ViewModels
                 {
                     kbd.dwFlags = 0x2;
                     input.ki = kbd;
-                    Win32Interop.SendInput(1, input, Marshal.SizeOf<Win32Interop.INPUT>());
+                    if (Win32Interop.SendInput(1, new Win32Interop.INPUT[] {input}, Marshal.SizeOf<Win32Interop.INPUT>()) == 0)
+                    {
+                        ErrorBox(this, "Down input failed to send");
+                    }
+#if DEBUG
+                    else
+                    {
+                        debuggingKeyLog.Add(DateTime.Now, input);
+                    }
+#endif
+                    virtualKeys[opposingIndex] = false;
                 }
             }
             if (message == KeyboardHookWindows.KeyboardMessage.KeyUp || message == KeyboardHookWindows.KeyboardMessage.SysKeyUp)
@@ -173,7 +186,17 @@ namespace SOCD_Sharp.ViewModels
                 {
                     kbd.dwFlags = 0;
                     input.ki = kbd;
-                    Win32Interop.SendInput(1, input, Marshal.SizeOf<Win32Interop.INPUT>());
+                    if (Win32Interop.SendInput(1, new Win32Interop.INPUT[] { input }, Marshal.SizeOf<Win32Interop.INPUT>()) == 0)
+                    {
+                        ErrorBox(this, "Up input failed to send");
+                    }
+#if DEBUG
+                    else
+                    {
+                        debuggingKeyLog.Add(DateTime.Now, input);
+                    }
+#endif
+
                 }
             }
         }
@@ -214,21 +237,23 @@ namespace SOCD_Sharp.ViewModels
         public KeySet currKeys()
         {
             KeySet? set = new();
+            string selectedSet = SelectedKeys;
 
-            switch (SelectedKeys)
-            {
-                case "WASD":
-                    keyTypes.TryGetValue("WASD", out set);
-                    break;
+            //switch (SelectedKeys)
+            //{
+            //    case "WASD":
+            //        keyTypes.TryGetValue("WASD", out set);
+            //        break;
 
-                case "Arrows":
-                    keyTypes.TryGetValue("Arrows", out set);
-                    break;
+            //    case "Arrows":
+            //        keyTypes.TryGetValue("Arrows", out set);
+            //        break;
 
-                case "Custom":
-                    keyTypes.TryGetValue("Custom", out set);
-                    break;
-            }
+            //    case "Custom":
+            //        keyTypes.TryGetValue("Custom", out set);
+            //        break;
+            //}
+            keyTypes.TryGetValue(selectedSet, out set);
 
             if (set != null) { return set; }
             else { return new(); }
@@ -239,6 +264,10 @@ namespace SOCD_Sharp.ViewModels
             { "WASD", new KeySet(65,68,87,83) },
             { "Arrows", new KeySet(37,39,38,40) },
         };
+
+#if DEBUG
+        public Dictionary<DateTime, Win32Interop.INPUT> debuggingKeyLog = new();
+#endif
 
         public class KeySet
         {
