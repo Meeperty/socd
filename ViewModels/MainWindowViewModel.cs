@@ -1,12 +1,9 @@
 using System;
 using System.Collections.Generic;
-using System.Text;
 using System.ComponentModel;
-using System.Runtime.InteropServices;
-using Avalonia.Controls;
-using Avalonia;
-using SOCD_Sharp;
 using System.IO;
+using System.Runtime.InteropServices;
+using System.Threading;
 
 
 namespace SOCD_Sharp.ViewModels
@@ -45,6 +42,28 @@ namespace SOCD_Sharp.ViewModels
 
             kbhook.NewKeyboardMessage += KeyHandler;
             kbhook.InstallHook();
+
+            Thread.Sleep(2000);
+            uint e1Tag = 0xe1000000;
+            uint e0Tag = 0xe0000000;
+            //uint test = Win32Interop.MapVirtualKeyW(0x25 + e0Tag, (uint)Win32Interop.MAPTYPE.MAPVK_VK_TO_VSC_EX); 
+            //uint test = Win32Interop.MapVirtualKeyW(0x41, (uint)Win32Interop.MAPTYPE.MAPVK_VK_TO_VSC);
+
+            Win32Interop.INPUT[] arr = new Win32Interop.INPUT[1];
+            arr[0] = new();
+            arr[0].type = 1;
+            arr[0].union.ki.dwFlags = (uint)KEYEVENTF.EXTENDEDKEY; 
+            arr[0].union.ki.wScan = 0xe1;
+            arr[0].union.ki.wVk = 0x27;
+            Win32Interop.SendInput(1, arr, Marshal.SizeOf<Win32Interop.INPUT>());
+
+            Thread.Sleep(1);
+            arr[0] = new();
+            arr[0].type = 1;
+            arr[0].union.ki.dwFlags = (uint)(KEYEVENTF.KEYUP | KEYEVENTF.EXTENDEDKEY);
+            arr[0].union.ki.wScan = 0xe1;
+            arr[0].union.ki.wVk = 0x27;
+            Win32Interop.SendInput(1, arr, Marshal.SizeOf<Win32Interop.INPUT>());
         }
 
         //binding property for the key options
@@ -112,9 +131,11 @@ namespace SOCD_Sharp.ViewModels
             if (keys != null)
             {
                 KeySet wasd;
-                keyTypes.TryGetValue("WASD", out wasd);
+                keySets.TryGetValue("WASD", out wasd);
+
                 KeySet arrows;
-                keyTypes.TryGetValue("Arrows", out arrows);
+                keySets.TryGetValue("Arrows", out arrows);
+
                 if (KeySet.SameKeys(wasd, keys))
                 {
                     SelectedKeys = "WASD";
@@ -125,7 +146,9 @@ namespace SOCD_Sharp.ViewModels
                 }
                 else
                 {
-                    keyTypes.Add("Custom", new(l,r,u,d));
+                    keySets.Add("Custom", keys);
+
+                    SelectedKeys = "Custom";
                 }
             }
 
@@ -148,7 +171,9 @@ namespace SOCD_Sharp.ViewModels
             int key = args.VirtKeyCode;
             
             int opposing = FindOpposingKey(key);
-            kbd.wVk = opposing;
+            kbd.wVk = (ushort)opposing;
+            //int opposingScan = (int)Win32Interop.MapVirtualKeyA((uint)opposing, (uint)Win32Interop.MAPTYPE.MAPVK_VK_TO_VSC);
+            //kbd.wScan = opposingScan;
             // if the keycode isn't in the KeySet, opposing returns -1
             if (opposing == -1) { return; }
 
@@ -163,8 +188,8 @@ namespace SOCD_Sharp.ViewModels
                 virtualKeys[index] = true;
                 if (realKeys[opposingIndex] && virtualKeys[opposingIndex])
                 {
-                    kbd.dwFlags = 0x2;
-                    input.ki = kbd;
+                    kbd.dwFlags = 0x2 | 0x1;// | 0x8;
+                    input.union.ki = kbd;
                     if (Win32Interop.SendInput(1, new Win32Interop.INPUT[] {input}, Marshal.SizeOf<Win32Interop.INPUT>()) == 0)
                     {
                         ErrorBox(this, "Down input failed to send");
@@ -184,8 +209,8 @@ namespace SOCD_Sharp.ViewModels
                 virtualKeys[index] = false;
                 if (realKeys[opposingIndex])
                 {
-                    kbd.dwFlags = 0;
-                    input.ki = kbd;
+                    kbd.dwFlags = 0 | 0x1;//0x8;
+                    input.union.ki = kbd;
                     if (Win32Interop.SendInput(1, new Win32Interop.INPUT[] { input }, Marshal.SizeOf<Win32Interop.INPUT>()) == 0)
                     {
                         ErrorBox(this, "Up input failed to send");
@@ -217,7 +242,7 @@ namespace SOCD_Sharp.ViewModels
 
         public int FindOpposingKey(int key)
         {
-            KeySet keys = currKeys();
+            KeySet keys = CurrentKeys;
             if (key == keys.left)
                 return keys.right;
             if (key == keys.right)
@@ -231,38 +256,40 @@ namespace SOCD_Sharp.ViewModels
 
         KeySet CurrentKeys
         {
-            get { return currKeys(); }
+            get 
+            {
+                KeySet? set = new();
+                keySets.TryGetValue(SelectedKeys, out set);
+
+                if (set != null) { return set; }
+                else { return new(); }
+            }
         }
 
-        public KeySet currKeys()
+        ScanCodeSet CurrentScans
         {
-            KeySet? set = new();
-            string selectedSet = SelectedKeys;
+            get
+            {
+                ScanCodeSet? set = new();
+                scanSets.TryGetValue(SelectedKeys, out set);
 
-            //switch (SelectedKeys)
-            //{
-            //    case "WASD":
-            //        keyTypes.TryGetValue("WASD", out set);
-            //        break;
-
-            //    case "Arrows":
-            //        keyTypes.TryGetValue("Arrows", out set);
-            //        break;
-
-            //    case "Custom":
-            //        keyTypes.TryGetValue("Custom", out set);
-            //        break;
-            //}
-            keyTypes.TryGetValue(selectedSet, out set);
-
-            if (set != null) { return set; }
-            else { return new(); }
+                if (set != null) { return set; }
+                else { return new(); }
+            }
         }
 
-        public Dictionary<string, KeySet> keyTypes = new Dictionary<string, KeySet> 
+        public Dictionary<string, KeySet> keySets = new Dictionary<string, KeySet> 
         {
-            { "WASD", new KeySet(65,68,87,83) },
-            { "Arrows", new KeySet(37,39,38,40) },
+            //left, right, up, down
+            { "WASD", new(65,68,87,83) },
+            { "Arrows", new(37,39,38,40) },
+        };
+
+        public Dictionary<string, ScanCodeSet> scanSets = new Dictionary<string, ScanCodeSet>
+        {
+            //left, right, up, down
+            { "WASD", new(0x01E, 0x020, 0x011, 0x01F) },
+            { "Arrows", new(0x14B, 0x14D, 0x148, 0x150) }
         };
 
 #if DEBUG
@@ -306,6 +333,54 @@ namespace SOCD_Sharp.ViewModels
                 if (left == k || right == k || up == k || down == k) { return true; }
                 return false;
             }
+        }
+
+        public class ScanCodeSet
+        {
+            public int left;
+            public int right;
+            public int up;
+            public int down;
+
+            public ScanCodeSet(int l, int r, int u, int d)
+            {
+                left = l;
+                right = r;
+                up = u;
+                down = d;
+            }
+            public ScanCodeSet()
+            {
+                left = 0;
+                right = 0;
+                up = 0;
+                down = 0;
+            }
+
+            public static bool SameKeys(KeySet first, KeySet second)
+            {
+                bool same = true;
+                if (first.left != second.left) { same = false; }
+                if (first.right != second.right) { same = false; }
+                if (first.up != second.up) { same = false; }
+                if (first.down != second.down) { same = false; }
+                return same;
+            }
+
+            public bool ContainsKey(int k)
+            {
+                if (left == k || right == k || up == k || down == k) { return true; }
+                return false;
+            }
+        }
+
+        [Flags]
+        enum KEYEVENTF : uint
+        {
+            EXTENDEDKEY = 0x0001,
+            KEYUP = 0x0002,
+            SCANCODE = 0x0008,
+            UNICODE = 0x0004
         }
     }
 }
