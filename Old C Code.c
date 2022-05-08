@@ -17,7 +17,7 @@
 # define IS_UP 0
 # define whitelist_max_length 200
 
-const char* CONFIG_NAME = "socd.conf";
+const char* CONFIG_NAME = "socd_updated.conf";
 const LPCWSTR CLASS_NAME = L"SOCD_CLASS";
 char config_line[100];
 char focused_program[MAX_PATH];
@@ -27,16 +27,19 @@ HHOOK kbhook;
 int hook_is_installed = 0;
 
 int real[4]; // whether the key is pressed for real on keyboard
-int virtualKeys[4]; // whether the key is pressed on a software level
+int virtual[4]; // whether the key is pressed on a software level
+int DEFUALT_DISABLE_BIND = 0xA1; // e
 //              a     d     w     s
 int WASD[4] = { 0x41, 0x44, 0x57, 0x53 };
 const int WASD_ID = 100;
 //                <     >     ^     v
 int ARROWS[4] = { 0x25, 0x27, 0x26, 0x28 };
 const int ARROWS_ID = 200;
-
+// left, right, up, down
 int CUSTOM_BINDS[4];
 const int CUSTOM_ID = 300;
+int DISABLE_BIND;
+int disableKeyPressed;
 
 int error_message(char* text) {
     int error = GetLastError();
@@ -51,7 +54,7 @@ int error_message(char* text) {
     return 1;
 }
 
-void write_settings(int* bindings) {
+void write_settings(int* bindings, int disableBind) {
     FILE* config_file = fopen(CONFIG_NAME, "w");
     if (config_file == NULL) {
         // This writes to console that we're freeing sigh
@@ -62,6 +65,7 @@ void write_settings(int* bindings) {
     for (int i = 0; i < 4; i++) {
         fprintf(config_file, "%X\n", bindings[i]);
     }
+    fprintf(config_file, "%X\n", disableBind);
     for (int i = 0; i < whitelist_max_length; i++) {
         if (programs_whitelist[i][0] == '\0') {
             break;
@@ -71,18 +75,19 @@ void write_settings(int* bindings) {
     fclose(config_file);
 }
 
-void set_bindings(int* bindings) {
+void set_bindings(int* bindings, int disableBind) {
     CUSTOM_BINDS[0] = bindings[0];
     CUSTOM_BINDS[1] = bindings[1];
     CUSTOM_BINDS[2] = bindings[2];
     CUSTOM_BINDS[3] = bindings[3];
+    DISABLE_BIND = disableBind;
 }
 
 void read_settings() {
     FILE* config_file = fopen(CONFIG_NAME, "r+");
     if (config_file == NULL) {
-        set_bindings(WASD);
-        write_settings(WASD);
+        set_bindings(WASD, DEFUALT_DISABLE_BIND);
+        write_settings(WASD, DEFUALT_DISABLE_BIND);
         return;
     }
 
@@ -92,6 +97,11 @@ void read_settings() {
         int button = (int)strtol(result, NULL, 16);
         CUSTOM_BINDS[i] = button;
     }
+
+    // 5th line is disable key bind
+    char* result = fgets(config_line, 100, config_file);
+    int button = (int)strtol(result, NULL, 16);
+    DISABLE_BIND = button;
 
     // Then there are programs SOCD cleaner should track
     int i = 0;
@@ -152,6 +162,17 @@ LRESULT CALLBACK LowLevelKeyboardProc(int nCode, WPARAM wParam, LPARAM lParam) {
 
     INPUT input;
     int key = kbInput->vkCode;
+    if (key == DISABLE_BIND) {
+        if (wParam == WM_KEYDOWN || wParam == WM_SYSKEYDOWN)
+        {
+            disableKeyPressed = IS_DOWN;
+        }
+        else if (wParam == WM_KEYUP || wParam == WM_SYSKEYUP)
+        {
+            disableKeyPressed = IS_UP;
+        }
+        return CallNextHookEx(NULL, nCode, wParam, lParam);
+    }
     int opposing = find_opposing_key(key);
     if (opposing < 0) {
         return CallNextHookEx(NULL, nCode, wParam, lParam);
@@ -163,22 +184,22 @@ LRESULT CALLBACK LowLevelKeyboardProc(int nCode, WPARAM wParam, LPARAM lParam) {
     // instead of WM_KEYDOWN/WM_KEYUP, check it as well
     if (wParam == WM_KEYDOWN || wParam == WM_SYSKEYDOWN) {
         real[index] = IS_DOWN;
-        virtualKeys[index] = IS_DOWN;
-        if (real[opposing_index] == IS_DOWN && virtualKeys[opposing_index] == IS_DOWN) {
+        virtual[index] = IS_DOWN;
+        if (real[opposing_index] == IS_DOWN && virtual[opposing_index] == IS_DOWN && disableKeyPressed == IS_UP) {
             input.type = INPUT_KEYBOARD;
             input.ki = (KEYBDINPUT){ opposing, 0, KEYEVENTF_KEYUP, 0, 0 };
             SendInput(1, &input, sizeof(INPUT));
-            virtualKeys[opposing_index] = IS_UP;
+            virtual[opposing_index] = IS_UP;
         }
     }
     else if (wParam == WM_KEYUP || wParam == WM_SYSKEYUP) {
         real[index] = IS_UP;
-        virtualKeys[index] = IS_UP;
-        if (real[opposing_index] == IS_DOWN) {
+        virtual[index] = IS_UP;
+        if (real[opposing_index] == IS_DOWN && disableKeyPressed == IS_UP) {
             input.type = INPUT_KEYBOARD;
             input.ki = (KEYBDINPUT){ opposing, 0, 0, 0, 0 };
             SendInput(1, &input, sizeof(INPUT));
-            virtualKeys[opposing_index] = IS_DOWN;
+            virtual[opposing_index] = IS_DOWN;
         }
     }
     return CallNextHookEx(NULL, nCode, wParam, lParam);
@@ -208,10 +229,10 @@ void unset_kb_hook() {
         real[KEY_RIGHT] = IS_UP;
         real[KEY_UP] = IS_UP;
         real[KEY_DOWN] = IS_UP;
-        virtualKeys[KEY_LEFT] = IS_UP;
-        virtualKeys[KEY_RIGHT] = IS_UP;
-        virtualKeys[KEY_UP] = IS_UP;
-        virtualKeys[KEY_DOWN] = IS_UP;
+        virtual[KEY_LEFT] = IS_UP;
+        virtual[KEY_RIGHT] = IS_UP;
+        virtual[KEY_UP] = IS_UP;
+        virtual[KEY_DOWN] = IS_UP;
         hook_is_installed = 0;
     }
 }
@@ -277,14 +298,192 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) 
         return 0;
     case WM_COMMAND:
         if (wParam == WASD_ID) {
-            set_bindings(WASD);
-            write_settings(WASD);
+            set_bindings(WASD, DEFUALT_DISABLE_BIND);
+            write_settings(WASD, DEFUALT_DISABLE_BIND);
         }
         else if (wParam == ARROWS_ID) {
-            set_bindings(ARROWS);
-            write_settings(ARROWS);
+            set_bindings(ARROWS, DEFUALT_DISABLE_BIND);
+            write_settings(ARROWS, DEFUALT_DISABLE_BIND);
         }
     }
 
     return DefWindowProcW(hwnd, uMsg, wParam, lParam);
+}
+
+int main() {
+    // You can compile with these flags instead of calling to FreeConsole
+    // to get rid of a terminal window
+    // cl socd_cleaner.c /link /SUBSYSTEM:WINDOWS /ENTRY:mainCRTStartup
+    FreeConsole();
+
+    disableKeyPressed = IS_UP;
+    real[KEY_LEFT] = IS_UP;
+    real[KEY_RIGHT] = IS_UP;
+    real[KEY_UP] = IS_UP;
+    real[KEY_DOWN] = IS_UP;
+    virtual[KEY_LEFT] = IS_UP;
+    virtual[KEY_RIGHT] = IS_UP;
+    virtual[KEY_UP] = IS_UP;
+    virtual[KEY_DOWN] = IS_UP;
+
+    HINSTANCE hInstance = (HINSTANCE)GetModuleHandle(NULL);
+
+    read_settings();
+    // Means no allowed programes were set up, just globally set the hook.
+    if (programs_whitelist[0][0] == '\0') {
+        set_kb_hook(hInstance);
+
+        // At least one allowed program is specified,
+        // handle hooking/unhooking when program gets focused/unfocused
+    }
+    else {
+        SetWinEventHook(
+            EVENT_OBJECT_FOCUS,
+            EVENT_OBJECT_FOCUS,
+            hInstance,
+            (WINEVENTPROC)detect_focused_program,
+            0,
+            0,
+            WINEVENT_OUTOFCONTEXT
+        );
+    }
+
+    WNDCLASSEXW wc;
+    wc.cbSize = sizeof(WNDCLASSEXW);
+    wc.style = 0;
+    wc.lpfnWndProc = WindowProc;
+    wc.cbClsExtra = 0;
+    wc.cbWndExtra = 0;
+    wc.hInstance = hInstance;
+    wc.hIcon = LoadIcon(NULL, IDI_APPLICATION);
+    wc.hCursor = LoadCursor(NULL, IDC_ARROW);
+    wc.hbrBackground = (HBRUSH)COLOR_WINDOW,
+        wc.lpszMenuName = NULL;
+    wc.lpszClassName = CLASS_NAME;
+    wc.hIconSm = LoadIcon(NULL, IDI_APPLICATION);
+
+    if (RegisterClassExW(&wc) == 0) {
+        return error_message("Failed to register window class, error code is %d");
+    };
+
+    HWND hwndMain = CreateWindowExW(
+        0,
+        CLASS_NAME,
+        L"SOCD helper for 3pic G4m3rz!",
+        WS_OVERLAPPEDWINDOW | WS_VISIBLE,
+        CW_USEDEFAULT,
+        CW_USEDEFAULT,
+        460,
+        200,
+        NULL,
+        NULL,
+        hInstance,
+        NULL);
+    if (hwndMain == NULL) {
+        return error_message("Failed to create a window, error code is %d");
+    }
+
+#pragma region Button Hwnds
+
+    HWND wasd_hwnd = CreateWindowExW(
+        0, //dwExStyle
+        L"BUTTON", //lpClassName
+        L"WASD", //lpWindowName
+        WS_TABSTOP | WS_VISIBLE | WS_CHILD | BS_AUTORADIOBUTTON, //dwStyle(s)
+        10, //x
+        90, //y
+        100, //nWidth
+        30, //nHeight
+        hwndMain, //hWndParent
+        (HMENU)WASD_ID, //hMenu
+        hInstance, //hInstance
+        NULL);
+    if (wasd_hwnd == NULL) {
+        return error_message("Failed to create WASD radiobutton, error code is %d");
+    }
+
+    HWND arrows_hwnd = CreateWindowExW(
+        0,
+        L"BUTTON",
+        L"Arrows",
+        WS_TABSTOP | WS_VISIBLE | WS_CHILD | BS_AUTORADIOBUTTON,
+        10,
+        110,
+        100,
+        30,
+        hwndMain,
+        (HMENU)ARROWS_ID,
+        hInstance,
+        NULL);
+    if (arrows_hwnd == NULL) {
+        return error_message("Failed to create Arrows radiobutton, error code is %d");
+    }
+
+    HWND custom_hwnd = CreateWindowExW(
+        0,
+        L"BUTTON",
+        L"Custom",
+        WS_TABSTOP | WS_VISIBLE | WS_CHILD | BS_AUTORADIOBUTTON,
+        10,
+        130,
+        100,
+        30,
+        hwndMain,
+        (HMENU)CUSTOM_ID,
+        hInstance,
+        NULL);
+    if (custom_hwnd == NULL) {
+        return error_message("Failed to create Custom radiobutton, error code is %d");
+    }
+
+#pragma endregion
+
+    int check_id;
+    char newText[12];
+    if (memcmp(CUSTOM_BINDS, WASD, sizeof(WASD)) == 0) {
+        check_id = WASD_ID;
+        strcpy(newText, "WASD");
+    }
+    else if (memcmp(CUSTOM_BINDS, ARROWS, sizeof(ARROWS)) == 0) {
+        check_id = ARROWS_ID;
+        strcpy(newText, "Arrows");
+    }
+    else {
+        check_id = CUSTOM_ID;
+        strcpy(newText, "Custom Keys");
+    }
+    if (CheckRadioButton(hwndMain, WASD_ID, CUSTOM_ID, check_id) == 0) {
+        return error_message("Failed to select default keybindings, error code is %d");
+    }
+
+    char title[39] = "SOCD helper for 3p1c G4m3rz! Tracking ";
+    strncat(title, newText, 12);
+    if (SetWindowTextA(hwndMain, title) == false) { return error_message("Couldn't set window title, error code is %d"); }
+
+    HWND text_hwnd = CreateWindowExW(
+        0,
+        L"STATIC",
+        (L"\"Last Wins\" is the only mode available as of now.\n"
+            L"I'll add custom binding interface later. "
+            L"For now, you can set them in socd.conf in the first 4 rows. "
+            L"The order is left, right, up, down."),
+        WS_VISIBLE | WS_CHILD,
+        10,
+        10,
+        400,
+        80,
+        hwndMain,
+        (HMENU)100,
+        hInstance,
+        NULL);
+    if (text_hwnd == NULL) {
+        return error_message("Failed to create Text, error code is %d");
+    }
+
+    MSG msg;
+    while (GetMessageW(&msg, NULL, 0, 0)) {
+        TranslateMessage(&msg);
+        DispatchMessage(&msg);
+    }
+    return 0;
 }
