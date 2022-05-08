@@ -20,7 +20,7 @@ There you go, I warned you. Enjoy!
 
 ## (Beta) Custom keybindings
 
-You can specify your custom keybindings as you first 4 rows in `socd.conf`.
+You can specify your custom keybindings as you first 5 rows in `socd.conf`. (the fifth row is the disable key)
 You can get numbers for your keys [here](https://docs.microsoft.com/en-us/windows/win32/inputdev/virtual-key-codes),
 just make sure to remove `0x` and put only the number itself.
 Just clicking on "Custom" doesn't do anything for now, but it'll appear as selected automatically
@@ -57,24 +57,17 @@ Some antiviruses might complain at prebuilt executable as if it has viruses.
 It doesn't, but you should never run untrusted code on your machine
 if you don't know what you are doing.
 
-You should be able to compile it from source with any C compiler on Windows.
-There is no external dependencies outside of builtin windows libraries.
-Couple examples:
+Assuming you have [Visual Studio Build Tools](https://docs.microsoft.com/en-us/cpp/build/walkthrough-compile-a-c-program-on-the-command-line?view=vs-2019) installed, run `build.bat` from the developer shell. 
+Running `build.bat release` will produce a release build. Consult the script source code for details.
 
-### With Clang
+Generally, you should be able to compile it from source with any C compiler on Windows.
+There is no external dependencies outside of builtin windows libraries.
+For example, with clang:
+
 Download [clang](https://releases.llvm.org/download.html) and run in the project root
 
 ```sh
 clang -o2 socd_cleaner.c -o socd_cleaner.exe
-```
-
-### With Visual Studio Build Tools
-
-Install [Visual Studio Build Tools](https://docs.microsoft.com/en-us/cpp/build/walkthrough-compile-a-c-program-on-the-command-line?view=vs-2019) (tm).
-Then run in the project root
-
-```sh
-cl /O2 socd_cleaner.c
 ```
 
 ## LICENSE
