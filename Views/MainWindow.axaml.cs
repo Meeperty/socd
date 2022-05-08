@@ -1,8 +1,11 @@
 using Avalonia;
 using Avalonia.Controls;
+using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Markup.Xaml;
+using System.ComponentModel;
 using SOCD_Sharp.ViewModels;
 using System;
+using SOCD_Sharp;
 using System.Runtime.InteropServices;
 
 namespace SOCD_Sharp.Views
@@ -13,9 +16,8 @@ namespace SOCD_Sharp.Views
         {
             Opened += (_, _) =>
             {
-                DataContextCast.ErrorBox += MakeErrorBox;
-                MakeErrorBox(this, "Wait for debug");
                 DataContextCast?.Init();
+                DataContextCast.ErrorBox += MakeErrorBox;
             };
             Closing += (_, _) =>
             {

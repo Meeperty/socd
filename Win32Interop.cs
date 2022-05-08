@@ -1,5 +1,10 @@
 ﻿using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
 using System.Runtime.InteropServices;
+using SOCD_Sharp;
 
 namespace SOCD_Sharp
 {
@@ -31,6 +36,7 @@ namespace SOCD_Sharp
 
         [DllImport("user32.dll")]
         public static extern uint SendInput(uint cInputs, INPUT[] input, int cbSize);
+        //public static uint SendInput(uint cInputs, INPUT input, int cbSize) => SendInput(cInputs, new INPUT[] { input }, cbSize);
 
         [UnmanagedFunctionPointer(CallingConvention.Winapi)]
         public delegate IntPtr HookProc(int nCode, UIntPtr wParam, IntPtr lParam);
@@ -46,50 +52,23 @@ namespace SOCD_Sharp
             MB_YESNO = 0x4L,
             MB_YESNOCANCEL = 0x3L
         }
-        
+
+        //assumes that this is an INPUT representing a keyboard input for simplicity
         [StructLayout(LayoutKind.Sequential)]
         public struct INPUT
         {
-            public uint type;
-            public INPUTUnion union;
-        }
-
-        [StructLayout(LayoutKind.Explicit)]
-        public struct INPUTUnion
-        {
-            [FieldOffset(0)]
-            public MOUSEINPUT mi;
-            [FieldOffset(0)]
+            public UInt32 type;
             public KEYBDINPUT ki;
-            [FieldOffset(0)]
-            public HARDWAREINPUT hi;
         }
 
         public struct KEYBDINPUT
         {
-            public ushort wVk;
-            public ushort wScan;
-            public uint dwFlags;
-            public uint time;
+            public int wVk;
+            public int wScan;
+            public long dwFlags;
+            public long time;
             //points to a DWORD
             public IntPtr dwExtraInfo;
-        }
-
-        public struct MOUSEINPUT
-        {
-            public int dx;
-            public int dy;
-            public uint mouseData;
-            public uint dwFlags;
-            public uint time;
-            public UIntPtr dwExtraInfo;
-        }
-
-        public struct HARDWAREINPUT
-        {
-            public uint uMsg;
-            public ushort wParamL;
-            public ushort wParamH;
         }
     }
 }
