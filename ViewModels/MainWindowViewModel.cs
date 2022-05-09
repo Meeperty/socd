@@ -25,6 +25,7 @@ namespace SOCD_Sharp.ViewModels
         public List<string> processList;
 
         public KeyboardHookWindows kbhook = new();
+        public WindowHook wndHook = new();
 
         public void Init()
         {
@@ -45,6 +46,9 @@ namespace SOCD_Sharp.ViewModels
 
             kbhook.NewKeyboardMessage += KeyHandler;
             kbhook.InstallHook();
+
+            wndHook.WindowEvent += DetectFocusedWindow;
+            wndHook.InstallHook();
         }
 
         //binding property for the key options
@@ -200,6 +204,13 @@ namespace SOCD_Sharp.ViewModels
                 }
             }
         }
+
+        public void DetectFocusedWindow(object? sender, WindowHook.EventEventArgs args)
+        {
+
+        }
+
+        //public 
 
         public int FindIndexByKey(int key)
         {

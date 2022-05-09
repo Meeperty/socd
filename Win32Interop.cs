@@ -11,8 +11,19 @@ namespace SOCD_Sharp
     /*
      * Functions:
      * MessageBox
+     * SetWindowsHookEx
      * CallNextHookEx
+     * UnhookWindowsHookEx
+     * SendInput
+     * SetWinEventHook
+     * UnhookWinEvent
      * 
+     * GetForegroundWindow
+     * GetWindowThreadProcessId
+     * OpenProcess
+     * QueryFullProcessImageName
+     * CloseHandle
+     * PathStripPath
      */
     public static class Win32Interop
     {
@@ -25,6 +36,7 @@ namespace SOCD_Sharp
         [DllImport("user32.dll")]
         public static extern int MessageBox(IntPtr hWnd, IntPtr lpText, IntPtr lpCaption, uint uType);
 
+        #region Hooks
         [DllImport("user32.dll")]
         public static extern IntPtr SetWindowsHookEx(KeyboardHookWindows.HookType idHook, KeyboardHookWindows.HookProc lpfn, IntPtr hMod, int dwThreadId);
         
@@ -34,15 +46,45 @@ namespace SOCD_Sharp
         [DllImport("user32.dll")]
         public static extern int UnhookWindowsHookEx(IntPtr hHook);
 
+        [UnmanagedFunctionPointer(CallingConvention.Winapi)]
+        public delegate IntPtr HookProc(int nCode, UIntPtr wParam, IntPtr lParam);
+        #endregion
+
         [DllImport("user32.dll")]
         public static extern uint SendInput(uint cInputs, INPUT[] input, int cbSize);
         //public static uint SendInput(uint cInputs, INPUT input, int cbSize) => SendInput(cInputs, new INPUT[] { input }, cbSize);
 
+        #region Win Event Hooks
         [DllImport("user32.dll")]
-        public static extern uint SetWinEventHook(uint eventMin, uint eventMax, IntPtr hmodWinEventProc, HookProc pfnWinEventProc, uint idProcess, uint idThread, uint dwFlags);
+        public static extern IntPtr SetWinEventHook(uint eventMin, uint eventMax, IntPtr hmodWinEventProc, EventProc pfnWinEventProc, uint idProcess, uint idThread, uint dwFlags);
+
+        [DllImport("user32.dll")]
+        public static extern bool UnhookWinEvent(IntPtr hWinEventHook);
 
         [UnmanagedFunctionPointer(CallingConvention.Winapi)]
-        public delegate IntPtr HookProc(int nCode, UIntPtr wParam, IntPtr lParam);
+        public delegate void EventProc(IntPtr HWINEVENTHOOK, uint dwEvent, IntPtr hwnd, int idObject, int idChild, uint idEventThread, uint dwmsEventTime);
+        #endregion
+
+        #region Window/Process funcs
+        [DllImport("user32.dll")]
+        public static extern IntPtr GetForegroundWindow();
+
+        [DllImport("user32.dll")]
+        public static extern uint GetWindowThreadProcessId(IntPtr hwnd);
+
+        [DllImport("kernel32.dll")]
+        public static extern IntPtr OpenProcess(uint dwDesiredAccess, bool bInheritHandle, uint dwProcessId);
+
+        [DllImport("kernel32.dll")]
+        public static extern bool QueryFullProcessImageName(IntPtr hProcess, uint dwFlags, out string lpExeName, UIntPtr lpdwSize);
+
+        [DllImport("kernel32.dll")]
+        public static extern bool CloseHandle(IntPtr hObject);
+
+        [DllImport("shlwapi.dll")]
+        public static extern void PathStripPath(ref string pszPath);
+
+        #endregion
 
         public enum MB : long
         {
