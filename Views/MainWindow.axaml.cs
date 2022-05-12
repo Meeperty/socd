@@ -17,7 +17,7 @@ namespace SOCD_Sharp.Views
             Opened += (_, _) =>
             {
                 DataContextCast?.Init();
-                DataContextCast.ErrorBox += MakeErrorBox;
+                DataContextCast.DebugBox += MakeErrorBox;
             };
             Closing += (_, _) =>
             {

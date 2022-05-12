@@ -17,7 +17,7 @@ namespace SOCD_Sharp.ViewModels
         public event PropertyChangedEventHandler? PropertyChanged;
 #pragma warning restore CS0108 // Member hides inherited member; missing new keyword
 
-        public event EventHandler<string> ErrorBox;
+        public event EventHandler<string> DebugBox;
 
         const string internalSettingsPath = @"socdSettings.conf";
         string settingsPath;
@@ -40,7 +40,7 @@ namespace SOCD_Sharp.ViewModels
             }
             else
             {
-                ErrorBox(this, "No settings path in socdSettings.conf");
+                DebugBox(this, "No settings path in socdSettings.conf");
             }
             reader.Close();
 
@@ -94,7 +94,7 @@ namespace SOCD_Sharp.ViewModels
                 keys = new(l, r, u, d);
                 if (KeySet.SameKeys(keys, new(0, 0, 0, 0)))
                 {
-                    ErrorBox(this, "Not enough keys in settings file");
+                    DebugBox(this, "Not enough keys in settings file");
                 }
 
                 for (int i = 0; i < maxProcessListLength; i++)
@@ -171,7 +171,7 @@ namespace SOCD_Sharp.ViewModels
                     input.ki = kbd;
                     if (Win32Interop.SendInput(1, new Win32Interop.INPUT[] {input}, Marshal.SizeOf<Win32Interop.INPUT>()) == 0)
                     {
-                        ErrorBox(this, "Down input failed to send");
+                        DebugBox(this, "Down input failed to send");
                     }
 #if DEBUG
                     else
@@ -192,7 +192,7 @@ namespace SOCD_Sharp.ViewModels
                     input.ki = kbd;
                     if (Win32Interop.SendInput(1, new Win32Interop.INPUT[] { input }, Marshal.SizeOf<Win32Interop.INPUT>()) == 0)
                     {
-                        ErrorBox(this, "Up input failed to send");
+                        DebugBox(this, "Up input failed to send");
                     }
 #if DEBUG
                     else
@@ -207,10 +207,67 @@ namespace SOCD_Sharp.ViewModels
 
         public void DetectFocusedWindow(object? sender, WindowHook.EventEventArgs args)
         {
-
+            string currFocusedWindow = GetFocusedWindowName();
+            DebugBox(this, currFocusedWindow);
         }
 
-        //public 
+        public string GetFocusedWindowName()
+        {
+            //HWND inspected_window = GetForegroundWindow();
+            //DWORD process_id = 0;
+            //GetWindowThreadProcessId(inspected_window, &process_id);
+            //if (process_id == 0)
+            //{
+            //    // Sometimes when you minimize a window nothing is focused for a brief moment,
+            //    // in this case windows sends "System Idle Process" as currently focused window
+            //    // for some reason. Just ignore it
+            //    return;
+            //}
+            //HANDLE hproc = OpenProcess(PROCESS_QUERY_INFORMATION | PROCESS_QUERY_LIMITED_INFORMATION, 0, process_id);
+            //if (hproc == NULL)
+            //{
+            //    // Sometimes we can't open a process (#5 "access denied"). Ignore it I guess.
+            //    if (GetLastError() == 5)
+            //    {
+            //        return;
+            //    }
+            //    error_message("Couldn't open active process, error code is: %d");
+            //}
+            //DWORD filename_size = MAX_PATH;
+            //// This function API is so fucking weird. Read its docs extremely carefully
+            //QueryFullProcessImageName(hproc, 0, focused_program, &filename_size);
+            //CloseHandle(hproc);
+            //PathStripPath(focused_program);
+            //printf("Window activated: %s\n", focused_program);
+
+            IntPtr inspectedWindow = Win32Interop.GetForegroundWindow();
+            uint processId = 0;
+            if (inspectedWindow != IntPtr.Zero)
+            {
+                processId = Win32Interop.GetWindowThreadProcessId(inspectedWindow);
+            }
+
+            if (processId == 0)
+            {
+                return "";
+            }
+
+            IntPtr hproc = Win32Interop.OpenProcess(0x400 | 0x1000, false, processId);
+            if (hproc == IntPtr.Zero)
+            {
+                if (Win32Interop.GetLastError() == 5)
+                {
+                    return "";
+                }
+            }
+            IntPtr filenameSize = Marshal.AllocHGlobal(Marshal.SizeOf<uint>());
+
+            string imageName;
+            Win32Interop.QueryFullProcessImageName(hproc, 0, out imageName, filenameSize);
+            Win32Interop.CloseHandle(hproc);
+            Path.GetFileName(imageName);
+            return imageName;
+        }
 
         public int FindIndexByKey(int key)
         {

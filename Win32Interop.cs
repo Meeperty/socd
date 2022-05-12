@@ -23,7 +23,6 @@ namespace SOCD_Sharp
      * OpenProcess
      * QueryFullProcessImageName
      * CloseHandle
-     * PathStripPath
      */
     public static class Win32Interop
     {
@@ -76,13 +75,16 @@ namespace SOCD_Sharp
         public static extern IntPtr OpenProcess(uint dwDesiredAccess, bool bInheritHandle, uint dwProcessId);
 
         [DllImport("kernel32.dll")]
-        public static extern bool QueryFullProcessImageName(IntPtr hProcess, uint dwFlags, out string lpExeName, UIntPtr lpdwSize);
+        public static extern bool QueryFullProcessImageName(IntPtr hProcess, uint dwFlags, out string lpExeName, IntPtr lpdwSize);
 
         [DllImport("kernel32.dll")]
         public static extern bool CloseHandle(IntPtr hObject);
 
-        [DllImport("shlwapi.dll")]
-        public static extern void PathStripPath(ref string pszPath);
+        [DllImport("kernel32.dll")]
+        public static extern uint GetLastError();
+
+        [DllImport("kernel32.dll")]
+        public static extern IntPtr GetModuleHandleA(string lpModuleName);
 
         #endregion
 
