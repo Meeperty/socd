@@ -16,9 +16,18 @@ namespace socd.Views
                 Thread.Sleep(2000);
                 //test.Test();
                 LLKB h = new();
-                
-                ((MainWindowViewModel)DataContext).greeting = Marshal.GetLastPInvokeError().ToString() + " was the last pinvoke error";
-                ((MainWindowViewModel)DataContext).Change();
+
+                try
+                {
+#pragma warning disable CS8600, CS8602
+                    ((MainWindowViewModel)DataContext).greeting = Marshal.GetLastPInvokeError().ToString() + " was the last pinvoke error";
+                    ((MainWindowViewModel)DataContext).Change();
+#pragma warning restore CS8600, CS8602
+                }
+                catch (System.NullReferenceException)
+                {
+
+                }
             };
         }
     }

@@ -1,11 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading;
-using System.Threading.Tasks;
-
-namespace socd
+﻿namespace socd
 {
     public class LLKB : IDisposable
     {
@@ -15,13 +8,13 @@ namespace socd
         const int WM_SYSKEYUP = 0x0105;
         
         //              a     d     w     s
-        static int[] WASD = { 0x41, 0x44, 0x57, 0x53 };
+        static ushort[] WASD = { 0x41, 0x44, 0x57, 0x53 };
         const int WASD_ID = 100;
         //                <     >     ^     v
-        static int[] ARROWS = { 0x25, 0x27, 0x26, 0x28 };
+        static ushort[] ARROWS = { 0x25, 0x27, 0x26, 0x28 };
         const int ARROWS_ID = 200;
         // left, right, up, down
-        int[] CUSTOM_BINDS = ARROWS;
+        ushort[] CUSTOM_BINDS = ARROWS;
         const int CUSTOM_ID = 300;
         bool[] real = new bool[4];
         bool[] virt = new bool[4];
@@ -34,9 +27,7 @@ namespace socd
             hookProc = new(LLKBProc);
             hookHandle = HooksInterop.SetWindowsHookEx(HooksInterop.HookType.WH_KEYBOARD_LL, hookProc, IntPtr.Zero, 0);
             if (hookHandle == IntPtr.Zero)
-            {
                 throw new HooksInterop.HookError("Failed to set hook");
-            }
         }
 
         public void Dispose()
@@ -56,16 +47,9 @@ namespace socd
                 return HooksInterop.CallNextHookEx(IntPtr.Zero, nCode, wParam, lParam);
             }
 
-            KBInterop.INPUT input = new();
-            input.type = 1;
-            input.u.ki.dwExtraInfo = (IntPtr)0;
-            input.u.ki.wScan = 0;
-            input.u.ki.time = 0;
-            
-
             int key = (int)kbInput.vkCode;
 
-            int opposing = FindOpposingKey(key);
+            ushort opposing = FindOpposingKey(key);
             if (opposing == 0)
                 return HooksInterop.CallNextHookEx(IntPtr.Zero, nCode, wParam, lParam);
             int index = FindIndexByKey(key);
@@ -77,9 +61,7 @@ namespace socd
                 virt[index] = true;
                 if (real[opposingIndex] && virt[opposingIndex])
                 {
-                    input.u.ki.wVk = (ushort)opposing;
-                    input.u.ki.dwFlags = KBInterop.KEYEVENTF_KEYUP;
-                    if (KBInterop.SendInput(1, new KBInterop.INPUT[1] { input }, Marshal.SizeOf<KBInterop.INPUT>()) != 0)
+                    if (KBInterop.SendInput(1, KBInterop.InputArr1(opposing, 0x2), Marshal.SizeOf<KBInterop.INPUT>()) != 0)
                     {
                         virt[opposingIndex] = false;
                     }
@@ -91,9 +73,7 @@ namespace socd
                 virt[index] = false;
                 if (real[opposingIndex] == true)
                 {
-                    input.u.ki.wVk = (ushort)opposing;
-                    input.u.ki.dwFlags = 0;
-                    if (KBInterop.SendInput(1, new KBInterop.INPUT[1] { input }, Marshal.SizeOf<KBInterop.INPUT>()) != 0)
+                    if (KBInterop.SendInput(1, KBInterop.InputArr1(opposing, 0), Marshal.SizeOf<KBInterop.INPUT>()) != 0)
                     {
                         virt[opposingIndex] = false;
                     }
@@ -103,7 +83,7 @@ namespace socd
             return HooksInterop.CallNextHookEx(IntPtr.Zero, nCode, wParam, lParam);
         }
 
-        int FindOpposingKey(int key)
+        ushort FindOpposingKey(int key)
         {
             if (key == CUSTOM_BINDS[(int)KEY.LEFT])
                 return CUSTOM_BINDS[(int)KEY.RIGHT];
@@ -117,7 +97,7 @@ namespace socd
                 return 0;
         }
 
-        int FindIndexByKey(int key)
+        ushort FindIndexByKey(int key)
         {
             if (key == CUSTOM_BINDS[(int)KEY.LEFT])
                 return (int)KEY.LEFT;

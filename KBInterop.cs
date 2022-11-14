@@ -1,10 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-
-namespace socd
+﻿namespace socd
 {
     internal class KBInterop
     {
@@ -34,6 +28,11 @@ namespace socd
                     }
                 };
             }
+        }
+
+        public static INPUT[] InputArr1(ushort keycode, uint flags)
+        {
+            return new INPUT[] { new(keycode, flags) };
         }
 
         [StructLayout(LayoutKind.Explicit)]

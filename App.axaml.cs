@@ -1,5 +1,3 @@
-using Avalonia;
-using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Markup.Xaml;
 using socd.ViewModels;
 using socd.Views;

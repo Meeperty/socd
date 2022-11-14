@@ -1,7 +1,6 @@
 using Avalonia.Controls;
 using Avalonia.Controls.Templates;
 using socd.ViewModels;
-using System;
 
 namespace socd
 {
