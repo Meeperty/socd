@@ -1,4 +1,6 @@
-﻿namespace socd
+﻿using System.IO;
+
+namespace socd
 {
     public class LLKB : IDisposable
     {
@@ -7,14 +9,14 @@
         const int WM_KEYUP = 0x0101;
         const int WM_SYSKEYUP = 0x0105;
         
-        //              a     d     w     s
-        static ushort[] WASD = { 0x41, 0x44, 0x57, 0x53 };
+        //                        a     d     w     s
+        static ushort[] wasd = { 0x41, 0x44, 0x57, 0x53 };
         const int WASD_ID = 100;
-        //                <     >     ^     v
-        static ushort[] ARROWS = { 0x25, 0x27, 0x26, 0x28 };
+        //                          <     >     ^     v
+        static ushort[] arrows = { 0x25, 0x27, 0x26, 0x28 };
         const int ARROWS_ID = 200;
         // left, right, up, down
-        ushort[] CUSTOM_BINDS = ARROWS;
+        ushort[] customBinds = arrows;
         const int CUSTOM_ID = 300;
         bool[] real = new bool[4];
         bool[] virt = new bool[4];
@@ -25,9 +27,60 @@
         public LLKB()
         {
             hookProc = new(LLKBProc);
+            ReadSettings("socd.conf");
             hookHandle = HooksInterop.SetWindowsHookEx(HooksInterop.HookType.WH_KEYBOARD_LL, hookProc, IntPtr.Zero, 0);
             if (hookHandle == IntPtr.Zero)
                 throw new HooksInterop.HookError("Failed to set hook");
+        }
+
+        void ReadSettings(string path)
+        {
+            FileStream settingsStream;
+            try { settingsStream = File.OpenRead(path); }
+            catch (FileNotFoundException) { SetBindings(wasd); WriteSettings(wasd); return; }
+            StreamReader sr = new StreamReader(settingsStream);
+            ushort[] binds = new ushort[4];
+            try
+            {
+                for (int i = 0; i < 4; i++)
+                {
+                    string line = sr.ReadLine();
+                    if (line == null) break;
+                    binds[i] = Convert.ToUInt16(line, 16);
+                }
+                SetBindings(binds);
+            }
+            finally
+            {
+                settingsStream.Dispose();
+                sr.Close();
+            }
+        }
+
+        void SetBindings(ushort[] bindings)
+        {
+            customBinds[0] = bindings[0];
+            customBinds[1] = bindings[1];
+            customBinds[2] = bindings[2];
+            customBinds[3] = bindings[3];
+        }
+
+        void WriteSettings(ushort[] bindings)
+        {
+            FileStream file = File.Create("socd.conf");
+            if (file != null)
+            {
+                StreamWriter sw = new(file);
+                sw.AutoFlush = true;
+                for (int i = 0; i < 4; i++)
+                {
+                    sw.WriteLine(bindings[i]);
+                }
+            }
+            else
+            {
+                return;
+            }
         }
 
         public void Dispose()
@@ -41,7 +94,7 @@
             KBInterop.KBDLLHOOKSTRUCT kbInput = Marshal.PtrToStructure<KBInterop.KBDLLHOOKSTRUCT>(lParam);
 
             if (nCode != 0 || 
-                kbInput.flags == KBInterop.KBDLLHOOKSTRUCTFlags.LLKHF_INJECTED ||
+                ((int)kbInput.flags & (int)KBInterop.KBDLLHOOKSTRUCTFlags.LLKHF_INJECTED) > 0||
                 kbInput == null)
             {
                 return HooksInterop.CallNextHookEx(IntPtr.Zero, nCode, wParam, lParam);
@@ -75,7 +128,7 @@
                 {
                     if (KBInterop.SendInput(1, KBInterop.InputArr1(opposing, 0), Marshal.SizeOf<KBInterop.INPUT>()) != 0)
                     {
-                        virt[opposingIndex] = false;
+                        virt[opposingIndex] = true;
                     }
                 }
             }
@@ -85,27 +138,27 @@
 
         ushort FindOpposingKey(int key)
         {
-            if (key == CUSTOM_BINDS[(int)KEY.LEFT])
-                return CUSTOM_BINDS[(int)KEY.RIGHT];
-            else if (key == CUSTOM_BINDS[(int)KEY.RIGHT])
-                return CUSTOM_BINDS[(int)KEY.LEFT];
-            else if (key == CUSTOM_BINDS[(int)KEY.UP])
-                return CUSTOM_BINDS[(int)KEY.DOWN];
-            else if (key == CUSTOM_BINDS[(int)KEY.DOWN])
-                return CUSTOM_BINDS[(int)KEY.UP];
+            if (key == customBinds[(int)KEY.LEFT])
+                return customBinds[(int)KEY.RIGHT];
+            else if (key == customBinds[(int)KEY.RIGHT])
+                return customBinds[(int)KEY.LEFT];
+            else if (key == customBinds[(int)KEY.UP])
+                return customBinds[(int)KEY.DOWN];
+            else if (key == customBinds[(int)KEY.DOWN])
+                return customBinds[(int)KEY.UP];
             else
                 return 0;
         }
 
         ushort FindIndexByKey(int key)
         {
-            if (key == CUSTOM_BINDS[(int)KEY.LEFT])
+            if (key == customBinds[(int)KEY.LEFT])
                 return (int)KEY.LEFT;
-            else if (key == CUSTOM_BINDS[(int)KEY.RIGHT])
+            else if (key == customBinds[(int)KEY.RIGHT])
                 return (int)KEY.RIGHT;
-            else if (key == CUSTOM_BINDS[(int)KEY.UP])
+            else if (key == customBinds[(int)KEY.UP])
                 return (int)KEY.UP;
-            else if (key == CUSTOM_BINDS[(int)KEY.DOWN])
+            else if (key == customBinds[(int)KEY.DOWN])
                 return (int)KEY.DOWN;
             else
                 return 0;
@@ -121,7 +174,7 @@
     }
 
     #region big enums
-    public enum VirtualKeyShort : short
+    public enum VKShort : short
     {
         ///<summary>
         ///Left mouse button
@@ -814,7 +867,7 @@
         ///</summary>
         OEM_CLEAR = 0xFE
     }
-    public enum ScanCodeShort : short
+    public enum SCShort : short
     {
         LBUTTON = 0,
         RBUTTON = 0,

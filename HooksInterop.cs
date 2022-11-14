@@ -2,7 +2,7 @@
 {
     internal class HooksInterop
     {
-        [DllImport("user32.dll")]
+        [DllImport("user32.dll", SetLastError = true)]
         public static extern IntPtr CallNextHookEx(IntPtr hhk, int nCode, int wParam, IntPtr lParam);
 
         public delegate IntPtr HookProc(int code, int wParam, IntPtr lParam);

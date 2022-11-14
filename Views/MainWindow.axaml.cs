@@ -8,12 +8,12 @@ namespace socd.Views
     {
         public MainWindow()
         {
-            Thread.Sleep(5000);
+            //Thread.Sleep(5000);
             InitializeComponent();
 
             Opened += (object? o, EventArgs e) =>
             {
-                Thread.Sleep(2000);
+                Thread.Sleep(5000);
                 //test.Test();
                 LLKB h = new();
 
