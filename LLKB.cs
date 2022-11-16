@@ -1,4 +1,7 @@
-﻿using System.IO;
+﻿using Microsoft.CodeAnalysis.CSharp.Syntax;
+using System.Collections.Generic;
+using System.IO;
+using System.Security.Cryptography;
 
 namespace socd
 {
@@ -20,6 +23,9 @@ namespace socd
         const int CUSTOM_ID = 300;
         bool[] real = new bool[4];
         bool[] virt = new bool[4];
+        ushort disableBind;
+        bool disableKeyDown = false;
+        List<string> programWhitelist = new();
 
         HooksInterop.HookProc hookProc;
         IntPtr hookHandle = IntPtr.Zero;
@@ -37,35 +43,52 @@ namespace socd
         {
             FileStream settingsStream;
             try { settingsStream = File.OpenRead(path); }
-            catch (FileNotFoundException) { SetBindings(wasd); WriteSettings(wasd); return; }
+            catch (FileNotFoundException) { SetBindings(wasd, 0xa1); WriteSettings(wasd, disableBind); return; }
             StreamReader sr = new StreamReader(settingsStream);
             ushort[] binds = new ushort[4];
+            ushort db = 0;
+            List<string> programs = new();
             try
             {
                 for (int i = 0; i < 4; i++)
                 {
                     string line = sr.ReadLine();
-                    if (line == null) break;
+                    if (line == null)
+                        return;
                     binds[i] = Convert.ToUInt16(line, 16);
                 }
-                SetBindings(binds);
+
+                string dbLine = sr.ReadLine();
+                if (dbLine == null)
+                    return;
+                db = Convert.ToUInt16(dbLine, 16);
+
+                string p = sr.ReadLine();
+                while (p != null)
+                {
+                    programs.Add(p);
+                    p = sr.ReadLine();
+                }
             }
             finally
             {
+                SetBindings(binds, db);
+                programWhitelist = programs;
                 settingsStream.Dispose();
                 sr.Close();
             }
         }
 
-        void SetBindings(ushort[] bindings)
+        void SetBindings(ushort[] bindings, ushort db)
         {
             customBinds[0] = bindings[0];
             customBinds[1] = bindings[1];
             customBinds[2] = bindings[2];
             customBinds[3] = bindings[3];
+            disableBind = db;
         }
 
-        void WriteSettings(ushort[] bindings)
+        void WriteSettings(ushort[] bindings, ushort db)
         {
             FileStream file = File.Create("socd.conf");
             if (file != null)
@@ -74,7 +97,17 @@ namespace socd
                 sw.AutoFlush = true;
                 for (int i = 0; i < 4; i++)
                 {
-                    sw.WriteLine(bindings[i]);
+                    sw.WriteLine(bindings[i].ToString("X"));
+                }
+
+                if (programWhitelist.Count == 0)
+                    sw.WriteLine(disableBind.ToString("X"));
+                else
+                    sw.Write(disableBind.ToString("X"));
+
+                foreach (var item in programWhitelist)
+                {
+                    sw.WriteLine(item);
                 }
             }
             else
@@ -101,6 +134,18 @@ namespace socd
             }
 
             int key = (int)kbInput.vkCode;
+            if (key == disableBind)
+            {
+                if (wParam == WM_KEYDOWN || wParam == WM_SYSKEYDOWN)
+                {
+                    disableKeyDown = true;
+                }
+                if (wParam == WM_KEYUP || wParam == WM_SYSKEYDOWN)
+                {
+                    disableKeyDown = false;
+                }
+                return HooksInterop.CallNextHookEx(IntPtr.Zero, nCode, wParam, lParam);
+            }
 
             ushort opposing = FindOpposingKey(key);
             if (opposing == 0)
@@ -112,7 +157,7 @@ namespace socd
             {
                 real[index] = true;
                 virt[index] = true;
-                if (real[opposingIndex] && virt[opposingIndex])
+                if (real[opposingIndex] && virt[opposingIndex] && disableKeyDown == false)
                 {
                     if (KBInterop.SendInput(1, KBInterop.InputArr1(opposing, 0x2), Marshal.SizeOf<KBInterop.INPUT>()) != 0)
                     {
@@ -124,7 +169,7 @@ namespace socd
             {
                 real[index] = false;
                 virt[index] = false;
-                if (real[opposingIndex] == true)
+                if (real[opposingIndex] == true && disableKeyDown == false)
                 {
                     if (KBInterop.SendInput(1, KBInterop.InputArr1(opposing, 0), Marshal.SizeOf<KBInterop.INPUT>()) != 0)
                     {

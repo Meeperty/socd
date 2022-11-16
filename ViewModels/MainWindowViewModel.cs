@@ -7,12 +7,5 @@ namespace socd.ViewModels
 #pragma warning restore CS0108 // Member hides inherited member; missing new keyword
         public string Greeting => greeting;
         public string greeting = "Welcome to Avalonia!";
-
-        //LLKB kbHook = new();
-
-        public void Change()
-        {
-            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs("Greeting"));
-        }
     }
 }
