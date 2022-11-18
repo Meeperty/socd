@@ -27,16 +27,37 @@ namespace socd
         bool disableKeyDown = false;
         List<string> programWhitelist = new();
 
-        HooksInterop.HookProc hookProc;
-        IntPtr hookHandle = IntPtr.Zero;
+        private static HooksInterop.HookProc hookProc;
+        GCHandle procPinhandle = GCHandle.Alloc(hookProc, GCHandleType.Pinned);
+
+        private IntPtr hookHandle = IntPtr.Zero;
+        private bool hookSet = false;
 
         public LLKB()
         {
-            hookProc = new(LLKBProc);
+            hookProc = LLKBProc;
             ReadSettings("socd.conf");
-            hookHandle = HooksInterop.SetWindowsHookEx(HooksInterop.HookType.WH_KEYBOARD_LL, hookProc, IntPtr.Zero, 0);
-            if (hookHandle == IntPtr.Zero)
-                throw new HooksInterop.HookError("Failed to set hook");
+            SetHook();
+        }
+
+        void SetHook()
+        {
+            if (!hookSet) 
+            {
+                hookHandle = HooksInterop.SetWindowsHookEx(HooksInterop.HookType.WH_KEYBOARD_LL, hookProc, IntPtr.Zero, 0);
+                Trace.Assert(hookHandle != IntPtr.Zero, "Handle was 0 after setting hook");
+                hookSet = true;
+            }
+        }
+
+        void UnsetHook()
+        {
+            if (hookSet)
+            {
+                Trace.Assert(HooksInterop.UnhookWindowsHookEx(hookHandle), "Failed to remove hook");
+                hookSet = false;
+                hookHandle = IntPtr.Zero;
+            }
         }
 
         void ReadSettings(string path)
@@ -118,16 +139,16 @@ namespace socd
 
         public void Dispose()
         {
-            if (HooksInterop.UnhookWindowsHookEx(hookHandle) == false)
-                throw new HooksInterop.HookError("Failed to unset hook");
+            UnsetHook();
+            procPinhandle.Free();
         }
 
         private IntPtr LLKBProc(int nCode, int wParam, IntPtr lParam)
         {
             KBInterop.KBDLLHOOKSTRUCT kbInput = Marshal.PtrToStructure<KBInterop.KBDLLHOOKSTRUCT>(lParam);
-
+            
             if (nCode != 0 || 
-                ((int)kbInput.flags & (int)KBInterop.KBDLLHOOKSTRUCTFlags.LLKHF_INJECTED) > 0||
+                ((int)kbInput.flags & (int)KBInterop.KBDLLHOOKSTRUCTFlags.LLKHF_INJECTED) > 0 ||
                 kbInput == null)
             {
                 return HooksInterop.CallNextHookEx(IntPtr.Zero, nCode, wParam, lParam);
@@ -150,6 +171,7 @@ namespace socd
             ushort opposing = FindOpposingKey(key);
             if (opposing == 0)
                 return HooksInterop.CallNextHookEx(IntPtr.Zero, nCode, wParam, lParam);
+                
             int index = FindIndexByKey(key);
             int opposingIndex = FindIndexByKey(opposing);
             
@@ -163,6 +185,10 @@ namespace socd
                     {
                         virt[opposingIndex] = false;
                     }
+                    else
+                    {
+                        Trace.Fail("Failed to send input");
+                    }
                 }
             }
             else if (wParam == WM_KEYUP || wParam == WM_SYSKEYUP)
@@ -174,6 +200,10 @@ namespace socd
                     if (KBInterop.SendInput(1, KBInterop.InputArr1(opposing, 0), Marshal.SizeOf<KBInterop.INPUT>()) != 0)
                     {
                         virt[opposingIndex] = true;
+                    }
+                    else
+                    {
+                        Trace.Fail("Failed to send input");
                     }
                 }
             }

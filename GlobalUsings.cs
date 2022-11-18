@@ -4,3 +4,4 @@ global using ReactiveUI;
 global using System;
 global using System.ComponentModel;
 global using System.Runtime.InteropServices;
+global using System.Diagnostics;

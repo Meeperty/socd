@@ -6,6 +6,6 @@ namespace socd.ViewModels
         public event PropertyChangedEventHandler? PropertyChanged;
 #pragma warning restore CS0108 // Member hides inherited member; missing new keyword
         public string Greeting => greeting;
-        public string greeting = "Welcome to Avalonia!";
+        public string greeting = "SOCD";
     }
 }

@@ -100,14 +100,5 @@
             /// </summary>
             WH_MOUSE_LL = 14
         }
-
-        public class HookError : Exception
-        {
-            string msg;
-            public HookError(string m)
-            {
-                msg = m;
-            }
-        }
     }
 }
