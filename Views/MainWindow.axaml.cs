@@ -13,10 +13,20 @@ namespace socd.Views
 
             Opened += (object? o, EventArgs e) =>
             {
-                Thread.Sleep(5000);
-                //test.Test();
-                LLKB h = new();
+                #if DEBUG
+                MessageBox(PlatformImpl.Handle.Handle, "Debug", "Box", 0);
+                #endif
+            };
+
+            Closed += (object? o, EventArgs e) =>
+            {
+                ((MainWindowViewModel)DataContext).Dispose();
             };
         }
+
+        #if DEBUG
+        [DllImport("user32.dll", SetLastError = true, CharSet = CharSet.Auto)]
+        public static extern int MessageBox(IntPtr hWnd, String text, String caption, uint type);
+        #endif
     }
 }
