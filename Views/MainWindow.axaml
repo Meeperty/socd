@@ -22,8 +22,13 @@
 			VerticalAlignment="Top"
 			Items="{Binding KeyOptions}"
 			SelectedItems="{Binding SelectedKeys}">
-			asdf
 		</ListBox>
+		<!--TextBlock Text="{Binding FocusedProcess}"
+				   HorizontalAlignment="Right"
+				   VerticalAlignment="Bottom"/ -->
+		<TextBlock Text="{Binding KBHookSet}"
+				   HorizontalAlignment="Left"
+				   VerticalAlignment="Bottom"/>
 	</Panel>
 	
 </Window>

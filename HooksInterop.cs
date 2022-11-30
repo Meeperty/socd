@@ -18,6 +18,9 @@
 
         public delegate void WinEventProc(IntPtr hWinEventHook, uint eventType, IntPtr hwnd, int idObject, int idChild, uint dwEventThread, uint dwmsEventTime);
 
+        [DllImport("user32.dll", SetLastError = true)]
+        public static extern bool UnhookWinEvent(IntPtr hWinEventHook);
+
         /// <summary>
         /// Enumerates the valid hook types passed as the idHook parameter into a call to SetWindowsHookEx.
         /// </summary>

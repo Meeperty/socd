@@ -30,7 +30,26 @@ namespace socd.ViewModels
             set
             {
                 selectedKeys = value;
-                PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(SelectedKeys)));
+                PropertyChanged?.Invoke(this, new(nameof(SelectedKeys)));
+            }
+        }
+
+        public string FocusedProcess
+        {
+            get { return focusedProcess; }
+            set
+            {
+                focusedProcess = value;
+                PropertyChanged?.Invoke(this, new(nameof(FocusedProcess)));
+            }
+        }
+
+        public string KBHookSet
+        {
+            get 
+            {
+                int i = 4;
+                return kbHookSet.ToString();
             }
         }
         #endregion
@@ -39,13 +58,31 @@ namespace socd.ViewModels
         {
             hookProc = LLKBProc;
             ReadSettings("socd.conf");
-            SetHook();
-        }
+            //SetKBHook();
+
+            #if DEBUG
+            programWhitelist.Add("hollow_knight.exe");
+            programWhitelist.Add("devenv.exe");
+            #endif
+
+            eventProc = WindowChangeEventProc;
+            eventHookHandle = HooksInterop.SetWinEventHook(
+                HooksInterop.WinEvents.EVENT_OBJECT_FOCUS, 
+                HooksInterop.WinEvents.EVENT_OBJECT_FOCUS,
+                IntPtr.Zero,
+                eventProc,
+                0,
+                0,
+                HooksInterop.WinEventFlags.WINEVENT_OUTOFCONTEXT);
+        }   
 
         public void Dispose()
         {
-            UnsetHook();
-            procPinhandle.Free();
+            UnsetKBHook();
+            hookProcPinhandle.Free();
+
+            HooksInterop.UnhookWinEvent(eventHookHandle);
+            eventProcPinhandle.Free();
         }
 
         #region KB handling and such
@@ -68,31 +105,41 @@ namespace socd.ViewModels
         bool[] virt = new bool[4];
         ushort disableBind;
         bool disableKeyDown = false;
+
+        string focusedProcess = "";
         List<string> programWhitelist = new();
 
         private static HooksInterop.HookProc hookProc;
-        GCHandle procPinhandle = GCHandle.Alloc(hookProc, GCHandleType.Pinned);
+        GCHandle hookProcPinhandle = GCHandle.Alloc(hookProc, GCHandleType.Pinned);
 
-        private IntPtr hookHandle = IntPtr.Zero;
-        private bool hookSet = false;
+        private static HooksInterop.WinEventProc eventProc;
+        GCHandle eventProcPinhandle = GCHandle.Alloc(eventProc, GCHandleType.Pinned);
 
-        void SetHook()
+        private IntPtr kbHookHandle = IntPtr.Zero;
+        private bool kbHookSet = false;
+
+        private IntPtr eventHookHandle = IntPtr.Zero;
+        private bool eventHookSet = false;
+
+        void SetKBHook()
         {
-            if (!hookSet)
+            if (!kbHookSet)
             {
-                hookHandle = HooksInterop.SetWindowsHookEx(HooksInterop.HookType.WH_KEYBOARD_LL, hookProc, IntPtr.Zero, 0);
-                Trace.Assert(hookHandle != IntPtr.Zero, "Handle was 0 after setting hook");
-                hookSet = true;
+                kbHookHandle = HooksInterop.SetWindowsHookEx(HooksInterop.HookType.WH_KEYBOARD_LL, hookProc, IntPtr.Zero, 0);
+                Trace.Assert(kbHookHandle != IntPtr.Zero, "Handle was 0 after setting hook");
+                kbHookSet = true;
+                PropertyChanged?.Invoke(this, new(nameof(KBHookSet)));
             }
         }
 
-        void UnsetHook()
+        void UnsetKBHook()
         {
-            if (hookSet)
+            if (kbHookSet)
             {
-                Trace.Assert(HooksInterop.UnhookWindowsHookEx(hookHandle), "Failed to remove hook");
-                hookSet = false;
-                hookHandle = IntPtr.Zero;
+                Trace.Assert(HooksInterop.UnhookWindowsHookEx(kbHookHandle), "Failed to remove hook");
+                kbHookSet = false;
+                PropertyChanged?.Invoke(this, new(nameof(KBHookSet)));
+                kbHookHandle = IntPtr.Zero;
                 //reset kb state so that the next hook doesn't have keys down that arent actually down
                 for (int i = 0; i < 4; i++)
                 {
@@ -100,6 +147,41 @@ namespace socd.ViewModels
                     virt[i] = false;
                 }
             }
+        }
+
+        //the inputs aren't always accurate, its better to just find it manually
+        void WindowChangeEventProc(IntPtr _, uint _1, IntPtr _2, int _3, int _4, uint _5, uint _6)
+        {
+            IntPtr foregroundWindow = WinInterop.GetForegroundWindow();
+            uint processId = 0;
+            WinInterop.GetWindowThreadProcessId(foregroundWindow, out processId);
+            if (processId == 0)
+            {
+                //If a window was just minimized, it will return the system idle process
+                return;
+            }
+
+            string processPath = "";
+            using (var process = Process.GetProcessById((int)processId))
+            {
+                processPath = process.MainModule.FileName;
+
+                if (processPath != "")
+                {
+                    string? fileName = Path.GetFileName(processPath);
+                    if (fileName != null)
+                    {
+                        FocusedProcess = fileName;
+                    }
+                }
+
+                if (programWhitelist.Contains(FocusedProcess))
+                {
+                    SetKBHook();
+                    return;
+                }
+            }
+            UnsetKBHook();
         }
 
         void SetBindings(ushort[] bindings, ushort db)
