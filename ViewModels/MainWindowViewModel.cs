@@ -1,6 +1,5 @@
-using System;
-using System.Collections.Generic;
-using System.IO;
+using Avalonia.Controls;
+using Avalonia.Input;
 
 namespace socd.ViewModels
 {
@@ -23,7 +22,7 @@ namespace socd.ViewModels
         }
 
         //binding property for the selected key option
-        private string selectedKeys = "";
+        private string selectedKeys = "Arrows";
         public string SelectedKeys
         {
             get { return selectedKeys; }
@@ -31,9 +30,58 @@ namespace socd.ViewModels
             {
                 selectedKeys = value;
                 PropertyChanged?.Invoke(this, new(nameof(SelectedKeys)));
+                switch (value)
+                {
+                    case "WASD":
+                        SetBindings(wasd);
+                        break;
+
+                    case "Arrows":
+                        SetBindings(arrows);
+                        break;
+
+                    case "Custom":
+                        SetBindings(customBinds);
+                        break;
+
+                    default:
+                        SetBindings(customBinds);
+                        break;
+                }
             }
         }
 
+        private string disableBindCodeString = "45";
+        public string DisableBindCodeString
+        {
+            get { return disableBindCodeString; }
+            set
+            {
+                disableBindCodeString = value;
+                PropertyChanged?.Invoke(this, new(nameof(DisableBindCodeString)));
+            }
+        }
+
+        public string DisableBindKeyString
+        {
+            get
+            {
+                if (((VKShort)disableBind).ToString() != disableBind.ToString())
+                    return " = " + ((VKShort)disableBind).ToString();
+                else
+                    return " = Not a key :(";
+            }
+        }
+
+        public void OnDBTextInput(TextBox o, KeyEventArgs e)
+        {
+            if (ushort.TryParse(o.Text, System.Globalization.NumberStyles.HexNumber, null, out ushort db))
+            {
+                SetBindings(db);
+            }
+        }
+
+        #region debug properties
         public string FocusedProcess
         {
             get { return focusedProcess; }
@@ -48,10 +96,11 @@ namespace socd.ViewModels
         {
             get 
             {
-                int i = 4;
                 return kbHookSet.ToString();
             }
         }
+        #endregion
+
         #endregion
 
         public MainWindowViewModel()
@@ -92,10 +141,10 @@ namespace socd.ViewModels
         const int WM_SYSKEYUP = 0x0105;
 
         //                        a     d     w     s
-        static ushort[] wasd = { 0x41, 0x44, 0x57, 0x53 };
+        static readonly ushort[] wasd = { 0x41, 0x44, 0x57, 0x53 };
         const int WASD_ID = 100;
         //                          <     >     ^     v
-        static ushort[] arrows = { 0x25, 0x27, 0x26, 0x28 };
+        static readonly ushort[] arrows = { 0x25, 0x27, 0x26, 0x28 };
         const int ARROWS_ID = 200;
         // left, right, up, down
         ushort[] currentBinds = arrows;
@@ -119,7 +168,6 @@ namespace socd.ViewModels
         private bool kbHookSet = false;
 
         private IntPtr eventHookHandle = IntPtr.Zero;
-        private bool eventHookSet = false;
 
         void SetKBHook()
         {
@@ -149,41 +197,6 @@ namespace socd.ViewModels
             }
         }
 
-        //the inputs aren't always accurate, its better to just find it manually
-        void WindowChangeEventProc(IntPtr _, uint _1, IntPtr _2, int _3, int _4, uint _5, uint _6)
-        {
-            IntPtr foregroundWindow = WinInterop.GetForegroundWindow();
-            uint processId = 0;
-            WinInterop.GetWindowThreadProcessId(foregroundWindow, out processId);
-            if (processId == 0)
-            {
-                //If a window was just minimized, it will return the system idle process
-                return;
-            }
-
-            string processPath = "";
-            using (var process = Process.GetProcessById((int)processId))
-            {
-                processPath = process.MainModule.FileName;
-
-                if (processPath != "")
-                {
-                    string? fileName = Path.GetFileName(processPath);
-                    if (fileName != null)
-                    {
-                        FocusedProcess = fileName;
-                    }
-                }
-
-                if (programWhitelist.Contains(FocusedProcess))
-                {
-                    SetKBHook();
-                    return;
-                }
-            }
-            UnsetKBHook();
-        }
-
         void SetBindings(ushort[] bindings, ushort db)
         {
             customBinds[0] = bindings[0];
@@ -191,6 +204,17 @@ namespace socd.ViewModels
             customBinds[2] = bindings[2];
             customBinds[3] = bindings[3];
             disableBind = db;
+            PropertyChanged?.Invoke(this, new(nameof(DisableBindKeyString)));
+        }
+
+        void SetBindings(ushort[] bindings)
+        {
+            SetBindings(bindings, disableBind);
+        }
+
+        void SetBindings(ushort db)
+        {
+            SetBindings(currentBinds, db);
         }
 
         void ReadSettings(string path)
@@ -227,7 +251,13 @@ namespace socd.ViewModels
             finally
             {
                 customBinds = binds;
-                SetBindings(binds, db);
+                if (binds.SequenceEqual(wasd))
+                    SelectedKeys = "WASD";
+                else if (binds.SequenceEqual(arrows))
+                    SelectedKeys = "Arrows";
+                else
+                    SelectedKeys = "Custom";
+                SetBindings(db);
                 programWhitelist = programs;
                 settingsStream.Dispose();
                 sr.Close();
@@ -328,6 +358,41 @@ namespace socd.ViewModels
             }
 
             return HooksInterop.CallNextHookEx(IntPtr.Zero, nCode, wParam, lParam);
+        }
+
+        void WindowChangeEventProc(IntPtr _, uint _1, IntPtr _2, int _3, int _4, uint _5, uint _6)
+        {
+            //the inputs aren't always accurate, its better to just find it manually
+            IntPtr foregroundWindow = WinInterop.GetForegroundWindow();
+            uint processId = 0;
+            WinInterop.GetWindowThreadProcessId(foregroundWindow, out processId);
+            if (processId == 0)
+            {
+                //If a window was just minimized, it will return the system idle process
+                return;
+            }
+
+            string processPath = "";
+            using (var process = Process.GetProcessById((int)processId))
+            {
+                processPath = process.MainModule.FileName;
+
+                if (processPath != "")
+                {
+                    string? fileName = Path.GetFileName(processPath);
+                    if (fileName != null)
+                    {
+                        FocusedProcess = fileName;
+                    }
+                }
+
+                if (programWhitelist.Contains(FocusedProcess))
+                {
+                    SetKBHook();
+                    return;
+                }
+            }
+            UnsetKBHook();
         }
 
         ushort FindOpposingKey(int key)

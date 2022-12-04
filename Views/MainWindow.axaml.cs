@@ -1,4 +1,6 @@
 using Avalonia.Controls;
+using Avalonia.Input;
+using Microsoft.CodeAnalysis.CSharp.Syntax;
 using socd.ViewModels;
 using System.Threading;
 
@@ -16,12 +18,19 @@ namespace socd.Views
                 #if DEBUG
                 MessageBox(PlatformImpl.Handle.Handle, "Debug", "Box", 0);
                 #endif
+
+                DBTextBox.AddHandler(KeyUpEvent, OnDBTextInput, Avalonia.Interactivity.RoutingStrategies.Tunnel);
             };
 
             Closed += (object? o, EventArgs e) =>
             {
                 ((MainWindowViewModel)DataContext).Dispose();
             };
+        }
+
+        public void OnDBTextInput(object? o, KeyEventArgs e)
+        {
+            ((MainWindowViewModel)DataContext)?.OnDBTextInput(DBTextBox, e);
         }
 
         #if DEBUG

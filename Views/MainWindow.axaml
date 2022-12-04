@@ -3,8 +3,8 @@
         xmlns:vm="using:socd.ViewModels"
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-        mc:Ignorable="d" d:DesignWidth="200" d:DesignHeight="200"
-		Width="200"
+        mc:Ignorable="d" d:DesignWidth="350" d:DesignHeight="200"
+		Width="350"
 		Height="200"
         x:Class="socd.Views.MainWindow"
         Icon="/Assets/avalonia-logo.ico"
@@ -14,21 +14,31 @@
         <vm:MainWindowViewModel/>
     </Design.DataContext>
 
-	<Panel Background="Black">
+	<DockPanel Background="Black">
 		<ListBox
 			Background="Black"
 			Classes="RadioButtonListBox"
-			HorizontalAlignment="Left"
-			VerticalAlignment="Top"
+			DockPanel.Dock="Left"
 			Items="{Binding KeyOptions}"
-			SelectedItems="{Binding SelectedKeys}">
+			SelectedItem="{Binding SelectedKeys}"
+			Padding="10">
 		</ListBox>
-		<!--TextBlock Text="{Binding FocusedProcess}"
-				   HorizontalAlignment="Right"
-				   VerticalAlignment="Bottom"/ -->
-		<TextBlock Text="{Binding KBHookSet}"
-				   HorizontalAlignment="Left"
-				   VerticalAlignment="Bottom"/>
-	</Panel>
+		
+		<DockPanel DockPanel.Dock="Left"
+				   VerticalAlignment="Top">
+			<TextBlock DockPanel.Dock="Top"
+					   Padding="10, 10, 10, 0">
+				Disable Bind (hex):
+			</TextBlock>
+			<DockPanel DockPanel.Dock="Top">
+				<TextBox x:Name="DBTextBox"
+						 Text="{Binding DisableBindCodeString}"
+						 DockPanel.Dock="Left"/>
+				<TextBlock Text="{Binding DisableBindKeyString}"
+						   VerticalAlignment="Center"/>
+			</DockPanel>
+
+		</DockPanel>
+	</DockPanel>
 	
 </Window>
