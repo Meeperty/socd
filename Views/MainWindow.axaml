@@ -3,9 +3,9 @@
         xmlns:vm="using:socd.ViewModels"
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-        mc:Ignorable="d" d:DesignWidth="350" d:DesignHeight="500"
-		Width="350"
-		Height="500"
+        mc:Ignorable="d" d:DesignWidth="575" d:DesignHeight="130"
+		Width="575"
+		Height="130"
         x:Class="socd.Views.MainWindow"
         Icon="/Assets/avalonia-logo.ico"
         Title="socd">
@@ -14,7 +14,7 @@
         <vm:MainWindowViewModel/>
     </Design.DataContext>
 
-	<StackPanel>
+	<StackPanel Orientation="Horizontal">
 		<ListBox
 			Background="Black"
 			Classes="RadioButtonListBox"
@@ -23,29 +23,30 @@
 			Padding="10">
 		</ListBox>
 
-		<TextBlock Padding="10, 10, 10, 0">
-			All binds are in hex
-		</TextBlock>
-
-		<StackPanel VerticalAlignment="Top">
+		<StackPanel Orientation="Vertical" IsEnabled="{Binding IsCustomSelected}">
+			<TextBlock Padding="10, 10, 10, 0">
+				All binds are in hex
+			</TextBlock>
 			
 			<TextBlock Padding="10, 10, 0, 0">
-				Disable:
+				Disable SOCD:
 			</TextBlock>
-			<StackPanel>
+			<StackPanel Orientation="Horizontal">
 				<TextBox Text="{Binding DBBinding.CodeString}"/>
 				<TextBlock Text="{Binding DBBinding.KeyString}"
 						   VerticalAlignment="Center"/>
 			</StackPanel>
+		</StackPanel>
 
-			<TextBlock Padding="10, 10, 0, 0">
+		<StackPanel Orientation="Vertical" IsEnabled="{Binding IsCustomSelected}">
+			<!--<TextBlock Padding="10, 10, 0, 0">
 				Set mode to "Custom" to use these directional binds
-			</TextBlock>
+			</TextBlock>-->
 			
 			<TextBlock Padding="10, 10, 0, 0">
 				Left:
 			</TextBlock>
-			<StackPanel>
+			<StackPanel Orientation="Horizontal">
 				<TextBox Text="{Binding LeftBinding.CodeString}"/>
 				<TextBlock Text="{Binding LeftBinding.KeyString}"
 						   VerticalAlignment="Center"/>
@@ -54,16 +55,18 @@
 			<TextBlock Padding="10, 10, 0, 0">
 				Right:
 			</TextBlock>
-			<StackPanel>
+			<StackPanel Orientation="Horizontal">
 				<TextBox Text="{Binding RightBinding.CodeString}"/>
 				<TextBlock Text="{Binding RightBinding.KeyString}"
 						 VerticalAlignment="Center"/>
 			</StackPanel>
+		</StackPanel>
 
+		<StackPanel Orientation="Vertical" IsEnabled="{Binding IsCustomSelected}">
 			<TextBlock Padding="10, 10, 0, 0">
 				Up:
 			</TextBlock>
-			<StackPanel>
+			<StackPanel Orientation="Horizontal">
 				<TextBox Text="{Binding UpBinding.CodeString}"/>
 				<TextBlock Text="{Binding UpBinding.KeyString}"
 						 VerticalAlignment="Center"/>
@@ -72,12 +75,12 @@
 			<TextBlock Padding="10, 10, 0, 0">
 				Down:
 			</TextBlock>
-			<StackPanel>
+			<StackPanel Orientation="Horizontal">
 				<TextBox Text="{Binding DownBinding.CodeString}"/>
 				<TextBlock Text="{Binding DownBinding.KeyString}"
 						 VerticalAlignment="Center"/>
-			</StackPanel>
 
+			</StackPanel>
 		</StackPanel>
 	</StackPanel>
 	

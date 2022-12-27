@@ -30,6 +30,7 @@ namespace socd.ViewModels
             {
                 selectedKeys = value;
                 PropertyChanged?.Invoke(this, new(nameof(SelectedKeys)));
+                PropertyChanged?.Invoke(this, new(nameof(IsCustomSelected)));
                 switch (value)
                 {
                     case "WASD":
@@ -50,7 +51,14 @@ namespace socd.ViewModels
                 }
             }
         }
-        
+
+        public bool IsCustomSelected
+        {
+            get
+            {
+                return SelectedKeys == "Custom";
+            }
+        }
 
         public KeyBindDataBindings dbBinding = new();
         public KeyBindDataBindings DBBinding
@@ -136,7 +144,7 @@ namespace socd.ViewModels
             #if DEBUG
             programWhitelist.Add("hollow_knight.exe");
             programWhitelist.Add("devenv.exe");
-#endif
+            #endif
 
             dbBinding.PropertyChanged += OnDBBindingPropertyChange;
             leftBinding.PropertyChanged += OnLeftBindingPropertyChange;
